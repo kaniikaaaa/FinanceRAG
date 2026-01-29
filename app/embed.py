@@ -1,26 +1,30 @@
-import os
-import psycopg2
 from openai import OpenAI
+import psycopg2
+import os
 from dotenv import load_dotenv
 
-# Load env variables
 load_dotenv()
 
-DB_HOST = os.getenv("DB_HOST", "127.0.0.1")
-DB_PORT = os.getenv("DB_PORT", "5432")
-DB_NAME = os.getenv("DB_NAME", "financerag")
-DB_USER = os.getenv("DB_USER", "postgres")
-DB_PASSWORD = os.getenv("DB_PASSWORD", "kanika29")
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+DB_HOST = os.getenv("DB_HOST")
+DB_PORT = os.getenv("DB_PORT")
+DB_NAME = os.getenv("DB_NAME")
+DB_USER = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
 
-print("DB CONFIG:", DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD)
 
-# OpenAI client
-client = OpenAI(api_key=OPENAI_API_KEY)
+def get_connection():
+    return psycopg2.connect(
+        host=DB_HOST,
+        port=DB_PORT,
+        database=DB_NAME,
+        user=DB_USER,
+        password=DB_PASSWORD
+    )
 
-# Get embedding using large model
-def get_embedding(text: str):
+
+def generate_embedding(text):
     response = client.embeddings.create(
         model="text-embedding-3-large",
         input=text
@@ -28,55 +32,29 @@ def get_embedding(text: str):
     return response.data[0].embedding
 
 
-def main():
-    # Connect to Postgres
-    conn = psycopg2.connect(
-        host=DB_HOST,
-        port=DB_PORT,
-        database=DB_NAME,
-        user=DB_USER,
-        password=DB_PASSWORD
-    )
+def store_embeddings():
+    conn = get_connection()
     cur = conn.cursor()
 
-    # Fetch rows where embedding is NULL
-    cur.execute("""
-        SELECT id, content
-        FROM public.news_chunks
-        WHERE embedding IS NULL
-        ORDER BY id;
-    """)
+    cur.execute("SELECT id, chunk FROM public.news_chunks WHERE embedding IS NULL;")
     rows = cur.fetchall()
 
-    if not rows:
-        print("⚠️ No rows found without embeddings.")
-        return
+    for row_id, chunk in rows:
+        emb = generate_embedding(chunk)
 
-    for row in rows:
-        row_id, content = row
+        cur.execute("""
+            UPDATE public.news_chunks
+            SET embedding = %s
+            WHERE id = %s;
+        """, (emb, row_id))
 
-        print(f"Generating embedding for row id: {row_id}")
+        print(f"Embedding stored for row id: {row_id}")
 
-        try:
-            embedding = get_embedding(content)
-
-            cur.execute("""
-                UPDATE public.news_chunks
-                SET embedding = %s
-                WHERE id = %s
-            """, (embedding, row_id))
-
-            conn.commit()
-            print(f"Embedding stored for row id: {row_id}")
-
-        except Exception as e:
-            print(f"❌ Error for row id {row_id}: {e}")
-            conn.rollback()
-
+    conn.commit()
     cur.close()
     conn.close()
     print("✅ All embeddings generated and saved!")
 
 
 if __name__ == "__main__":
-    main()
+    store_embeddings()
