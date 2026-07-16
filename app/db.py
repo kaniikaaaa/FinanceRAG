@@ -1,38 +1,40 @@
-from sqlalchemy import create_engine, text
 import os
 from pathlib import Path
+
+import psycopg2
 from dotenv import load_dotenv
 
-# Load .env from parent directory (project root)
-env_path = Path(__file__).parent.parent / '.env'
-print(f"Loading .env from: {env_path}")
-print(f".env exists: {env_path.exists()}")
-load_dotenv(dotenv_path=env_path)
+load_dotenv(dotenv_path=Path(__file__).parent.parent / ".env")
 
-DB_HOST = os.getenv("DB_HOST")
-DB_PORT = os.getenv("DB_PORT")
-DB_NAME = os.getenv("DB_NAME")
-DB_USER = os.getenv("DB_USER")
-DB_PASSWORD = os.getenv("DB_PASSWORD")
 
-# Debug prints
-print(f"DB_HOST: {DB_HOST}")
-print(f"DB_PORT: {DB_PORT}")
-print(f"DB_NAME: {DB_NAME}")
-print(f"DB_USER: {DB_USER}")
-print(f"DB_PASSWORD: {'*' * len(DB_PASSWORD) if DB_PASSWORD else 'None'}")
+def get_connection():
+    """Connect to Postgres.
 
-if DB_PASSWORD:
-    DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-else:
-    DATABASE_URL = f"postgresql://{DB_USER}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    DATABASE_URL wins when it is set — hosted providers hand you one string,
+    and the Vercel/Neon integration injects it — with the DB_* parts kept as
+    the local fallback.
+    """
+    url = os.getenv("DATABASE_URL")
+    if url:
+        return psycopg2.connect(url)
 
-engine = create_engine(DATABASE_URL)
+    return psycopg2.connect(
+        host=os.getenv("DB_HOST"),
+        port=os.getenv("DB_PORT"),
+        database=os.getenv("DB_NAME"),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD"),
+    )
+
 
 def test_db():
-    with engine.connect() as conn:
-        result = conn.execute(text("SELECT 1"))
-        print("DB Connected:", result.fetchone())
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT 1;")
+    print("DB connected:", cur.fetchone())
+    cur.close()
+    conn.close()
+
 
 if __name__ == "__main__":
     test_db()

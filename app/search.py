@@ -1,27 +1,13 @@
 from openai import OpenAI
-import psycopg2
 import os
 from dotenv import load_dotenv
+
+from app.db import get_connection
+from app.vectors import to_vector
 
 load_dotenv()
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-DB_HOST = os.getenv("DB_HOST")
-DB_PORT = os.getenv("DB_PORT")
-DB_NAME = os.getenv("DB_NAME")
-DB_USER = os.getenv("DB_USER")
-DB_PASSWORD = os.getenv("DB_PASSWORD")
-
-
-def get_connection():
-    return psycopg2.connect(
-        host=DB_HOST,
-        port=DB_PORT,
-        database=DB_NAME,
-        user=DB_USER,
-        password=DB_PASSWORD
-    )
 
 
 def get_query_embedding(query):
@@ -41,9 +27,10 @@ def search_similar_news(query, k=3):
     cur.execute("""
         SELECT title, content
         FROM public.news_chunks
-        ORDER BY embedding <-> %s
+        WHERE embedding IS NOT NULL
+        ORDER BY embedding <-> %s::vector
         LIMIT %s;
-    """, (query_embedding, k))
+    """, (to_vector(query_embedding), k))
 
     results = cur.fetchall()
     cur.close()

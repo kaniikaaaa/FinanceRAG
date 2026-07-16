@@ -1,27 +1,13 @@
 from openai import OpenAI
-import psycopg2
 import os
 from dotenv import load_dotenv
+
+from app.db import get_connection
+from app.vectors import to_vector
 
 load_dotenv()
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-DB_HOST = os.getenv("DB_HOST")
-DB_PORT = os.getenv("DB_PORT")
-DB_NAME = os.getenv("DB_NAME")
-DB_USER = os.getenv("DB_USER")
-DB_PASSWORD = os.getenv("DB_PASSWORD")
-
-
-def get_connection():
-    return psycopg2.connect(
-        host=DB_HOST,
-        port=DB_PORT,
-        database=DB_NAME,
-        user=DB_USER,
-        password=DB_PASSWORD
-    )
 
 
 def generate_embedding(text):
@@ -36,7 +22,15 @@ def store_embeddings():
     conn = get_connection()
     cur = conn.cursor()
 
-    cur.execute("SELECT id, chunk FROM public.news_chunks WHERE embedding IS NULL;")
+    # Blank chunks are skipped: the embeddings API rejects empty input, and a
+    # blank passage is not worth retrieving anyway.
+    cur.execute("""
+        SELECT id, chunk
+        FROM public.news_chunks
+        WHERE embedding IS NULL
+          AND chunk IS NOT NULL
+          AND btrim(chunk) <> '';
+    """)
     rows = cur.fetchall()
 
     for row_id, chunk in rows:
@@ -44,9 +38,9 @@ def store_embeddings():
 
         cur.execute("""
             UPDATE public.news_chunks
-            SET embedding = %s
+            SET embedding = %s::vector
             WHERE id = %s;
-        """, (emb, row_id))
+        """, (to_vector(emb), row_id))
 
         print(f"Embedding stored for row id: {row_id}")
 
