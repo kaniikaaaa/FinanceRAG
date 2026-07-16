@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FinanceRAG — Retrieval-Augmented Market Intelligence</title>
+<meta name="description" content="Ask questions about finance news. Answers are grounded in retrieved source material and cited.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,300;1,6..72,400&family=Libre+Franklin:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper:      #f6ede1;
+    --paper-deep: #efe3d3;
+    --paper-sunk: #e9dcc9;
+    --ink:        #17120e;
+    --ink-soft:   #4d443a;
+    --ink-faint:  #8b8072;
+    --rule:       rgba(23, 18, 14, 0.15);
+    --rule-soft:  rgba(23, 18, 14, 0.08);
+    --oxblood:    #9b2c1f;
+    --verdigris:  #1f5e52;
+
+    --serif: "Newsreader", Georgia, "Times New Roman", serif;
+    --sans:  "Libre Franklin", "Helvetica Neue", Helvetica, sans-serif;
+    --mono:  "IBM Plex Mono", "SFMono-Regular", Menlo, monospace;
+
+    --rail: 21rem;
+    --gutter: clamp(1.25rem, 3.5vw, 3rem);
+  }
+
+  * { box-sizing: border-box; }
+
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Print grain. Sits above the paper, below the type. */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.42;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='0.34'/%3E%3C/svg%3E");
+  }
+
+  .sheet { position: relative; z-index: 1; }
+
+  a { color: inherit; }
+
+  ::selection { background: var(--oxblood); color: var(--paper); }
+
+  :focus-visible {
+    outline: 2px solid var(--oxblood);
+    outline-offset: 3px;
+  }
+
+  .label {
+    font-family: var(--mono);
+    font-size: 0.625rem;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  /* ── Masthead ─────────────────────────────────────────── */
+
+  .masthead {
+    padding: clamp(1.5rem, 3vw, 2.25rem) var(--gutter) 0;
+  }
+
+  .masthead__row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  .wordmark {
+    margin: 0;
+    font-family: var(--serif);
+    font-size: clamp(1.75rem, 4vw, 2.5rem);
+    font-weight: 500;
+    letter-spacing: -0.025em;
+    line-height: 1;
+  }
+
+  .wordmark em {
+    font-style: italic;
+    font-weight: 300;
+    color: var(--oxblood);
+  }
+
+  .masthead__tagline {
+    font-family: var(--mono);
+    font-size: 0.625rem;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    text-align: right;
+  }
+
+  .masthead__rule {
+    margin: 0.9rem 0 0;
+    border: 0;
+    border-top: 3px solid var(--ink);
+    border-bottom: 1px solid var(--ink);
+    height: 3px;
+  }
+
+  /* Ticker strip — real facts about the pipeline, not decoration. */
+  .colophon {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.4rem;
+    padding: 0.5rem var(--gutter) 0.6rem;
+    border-bottom: 1px solid var(--rule);
+    font-family: var(--mono);
+    font-size: 0.625rem;
+    font-weight: 400;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  .colophon b {
+    font-weight: 600;
+    color: var(--ink-soft);
+  }
+
+  /* ── Frame ────────────────────────────────────────────── */
+
+  .frame {
+    display: grid;
+    grid-template-columns: var(--rail) 1fr;
+    align-items: start;
+    max-width: 84rem;
+    margin: 0 auto;
+  }
+
+  .rail {
+    position: sticky;
+    top: 0;
+    padding: 1.75rem var(--gutter) 3rem;
+    border-right: 1px solid var(--rule);
+  }
+
+  .main {
+    padding: 1.75rem var(--gutter) 6rem;
+    min-width: 0;
+  }
+
+  /* ── Composer ─────────────────────────────────────────── */
+
+  .composer__label {
+    display: block;
+    margin-bottom: 0.6rem;
+  }
+
+  .composer__field {
+    position: relative;
+    background: var(--paper-deep);
+    border: 1px solid var(--rule);
+    transition: border-color 140ms ease, background-color 140ms ease;
+  }
+
+  .composer__field:focus-within {
+    border-color: var(--ink);
+    background: var(--paper-sunk);
+  }
+
+  .composer__input {
+    display: block;
+    width: 100%;
+    min-height: 6.5rem;
+    max-height: 16rem;
+    padding: 0.85rem 0.9rem;
+    border: 0;
+    background: transparent;
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: 1.0625rem;
+    line-height: 1.5;
+    resize: none;
+    outline: 0;
+  }
+
+  .composer__input::placeholder {
+    color: var(--ink-faint);
+    font-style: italic;
+  }
+
+  .composer__actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-top: 0.7rem;
+  }
+
+  .hint {
+    font-family: var(--mono);
+    font-size: 0.5625rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  kbd {
+    font-family: var(--mono);
+    font-size: inherit;
+    letter-spacing: 0;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.55rem 1rem;
+    border: 1px solid var(--ink);
+    background: var(--ink);
+    color: var(--paper);
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+  }
+
+  .btn:hover:not(:disabled) {
+    background: var(--oxblood);
+    border-color: var(--oxblood);
+  }
+
+  .btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .btn__mark { transition: transform 140ms ease; }
+  .btn:hover:not(:disabled) .btn__mark { transform: translateX(2px); }
+
+  /* ── Rail sections ────────────────────────────────────── */
+
+  .rail__section {
+    margin-top: 2.25rem;
+    padding-top: 1.1rem;
+    border-top: 1px solid var(--rule);
+  }
+
+  .prompts {
+    margin: 0.75rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .prompts li + li { margin-top: 0.15rem; }
+
+  .prompt {
+    display: grid;
+    grid-template-columns: 1rem 1fr;
+    gap: 0.35rem;
+    width: 100%;
+    padding: 0.32rem 0;
+    border: 0;
+    background: none;
+    color: var(--ink-soft);
+    font-family: var(--serif);
+    font-size: 0.9375rem;
+    line-height: 1.4;
+    text-align: left;
+    cursor: pointer;
+    transition: color 140ms ease;
+  }
+
+  .prompt::before {
+    content: "—";
+    color: var(--ink-faint);
+    transition: color 140ms ease, transform 140ms ease;
+  }
+
+  .prompt:hover { color: var(--ink); }
+  .prompt:hover::before { color: var(--oxblood); transform: translateX(2px); }
+
+  .method {
+    margin: 0.75rem 0 0;
+    font-size: 0.8125rem;
+    line-height: 1.62;
+    color: var(--ink-soft);
+  }
+
+  .method b {
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    color: var(--ink);
+  }
+
+  /* ── Standfirst / empty state ─────────────────────────── */
+
+  /* Vertically centred so the surrounding space reads as composed, not unfinished. */
+  .standfirst {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    max-width: 37rem;
+    min-height: min(64vh, 29rem);
+  }
+
+  .standfirst__rule {
+    width: 2.5rem;
+    height: 2px;
+    margin: 0 0 1.4rem;
+    background: var(--oxblood);
+    border: 0;
+  }
+
+  .standfirst h2 {
+    margin: 0 0 1.15rem;
+    font-family: var(--serif);
+    font-size: clamp(2rem, 4.4vw, 3.15rem);
+    font-weight: 400;
+    font-style: italic;
+    line-height: 1.13;
+    letter-spacing: -0.025em;
+    text-wrap: balance;
+  }
+
+  .standfirst p {
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.7;
+    color: var(--ink-soft);
+    max-width: 31rem;
+  }
+
+  .standfirst__note {
+    margin: 2.25rem 0 0;
+    padding-top: 0.85rem;
+    border-top: 1px solid var(--rule);
+    font-family: var(--mono);
+    font-size: 0.625rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  /* ── The dispatch ─────────────────────────────────────── */
+
+  .dispatch { max-width: 44rem; }
+
+  .dispatch__meta {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    padding-bottom: 0.55rem;
+    border-bottom: 1px solid var(--ink);
+  }
+
+  .dispatch__no {
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .dispatch__stats {
+    font-family: var(--mono);
+    font-size: 0.625rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .dispatch__question {
+    margin: 1.15rem 0 1.5rem;
+    font-family: var(--serif);
+    font-size: clamp(1.375rem, 2.6vw, 1.75rem);
+    font-weight: 400;
+    line-height: 1.28;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+  }
+
+  .dispatch__body p {
+    margin: 0 0 1.05rem;
+    font-family: var(--serif);
+    font-size: 1.1875rem;
+    line-height: 1.66;
+    color: #221b15;
+  }
+
+  .dispatch__body p:last-child { margin-bottom: 0; }
+
+  /* Drop cap — editorial signature of the answer. */
+  .dispatch__body p:first-of-type::first-letter {
+    float: left;
+    margin: 0.34rem 0.55rem 0 0;
+    font-size: 3.6em;
+    line-height: 0.76;
+    font-weight: 500;
+    color: var(--oxblood);
+  }
+
+  /* ── Sources ──────────────────────────────────────────── */
+
+  .sources {
+    margin-top: 2.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--rule);
+  }
+
+  .sources__head {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 1rem;
+  }
+
+  .sources__head::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--rule-soft);
+  }
+
+  .sources__list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .source {
+    display: grid;
+    grid-template-columns: 2.25rem 1fr;
+    gap: 0.5rem;
+    padding: 0.85rem 0;
+    border-bottom: 1px solid var(--rule-soft);
+  }
+
+  .source__no {
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--verdigris);
+    font-variant-numeric: tabular-nums;
+    padding-top: 0.2rem;
+  }
+
+  .source__title {
+    margin: 0 0 0.28rem;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+
+  .source__snippet {
+    margin: 0;
+    font-family: var(--serif);
+    font-size: 0.9375rem;
+    line-height: 1.58;
+    color: var(--ink-soft);
+  }
+
+  /* ── Status / working ─────────────────────────────────── */
+
+  .status {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+
+  .status__caret {
+    width: 0.5rem;
+    height: 0.9rem;
+    background: var(--oxblood);
+    animation: blink 1s steps(2, start) infinite;
+  }
+
+  @keyframes blink { to { visibility: hidden; } }
+
+  .status__bar {
+    margin-top: 1.25rem;
+    height: 1px;
+    background: var(--rule);
+    overflow: hidden;
+  }
+
+  .status__bar::after {
+    content: "";
+    display: block;
+    width: 34%;
+    height: 100%;
+    background: var(--oxblood);
+    animation: sweep 1.15s ease-in-out infinite;
+  }
+
+  @keyframes sweep {
+    0%   { transform: translateX(-100%); }
+    100% { transform: translateX(390%); }
+  }
+
+  /* ── Failure ──────────────────────────────────────────── */
+
+  .failure {
+    max-width: 40rem;
+    padding-left: 1rem;
+    border-left: 3px solid var(--oxblood);
+  }
+
+  .failure__label {
+    font-family: var(--mono);
+    font-size: 0.625rem;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--oxblood);
+  }
+
+  .failure__msg {
+    margin: 0.5rem 0 0;
+    font-family: var(--serif);
+    font-size: 1.0625rem;
+    line-height: 1.55;
+  }
+
+  .failure__detail {
+    margin: 0.6rem 0 0;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    line-height: 1.55;
+    color: var(--ink-faint);
+    word-break: break-word;
+  }
+
+  /* ── Reveal ───────────────────────────────────────────── */
+
+  .reveal { animation: rise 460ms cubic-bezier(0.2, 0.7, 0.3, 1) both; }
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* ── Narrow ───────────────────────────────────────────── */
+
+  @media (max-width: 60rem) {
+    .frame { grid-template-columns: 1fr; }
+    .rail {
+      position: static;
+      border-right: 0;
+      border-bottom: 1px solid var(--rule);
+      padding-bottom: 2rem;
+    }
+    .masthead__tagline { text-align: left; }
+  }
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <header class="masthead">
+    <div class="masthead__row">
+      <h1 class="wordmark">Finance<em>RAG</em></h1>
+      <p class="masthead__tagline">Retrieval-Augmented<br>Market Intelligence</p>
+    </div>
+    <hr class="masthead__rule">
+  </header>
+
+  <div class="colophon">
+    <span>Edition <b id="edition">—</b></span>
+    <span>Corpus <b>Yahoo Finance Wire</b></span>
+    <span>Retrieval <b>text-embedding-3-large</b></span>
+    <span>Composition <b>gpt-4o-mini</b></span>
+    <span>Service <b id="service">checking…</b></span>
+  </div>
+
+  <div class="frame">
+
+    <aside class="rail">
+      <form class="composer" id="composer">
+        <label class="label composer__label" for="query">Your query</label>
+        <div class="composer__field">
+          <textarea
+            id="query"
+            class="composer__input"
+            rows="3"
+            placeholder="What are analysts saying about Apple's earnings?"
+            autocomplete="off"
+            spellcheck="false"></textarea>
+        </div>
+        <div class="composer__actions">
+          <span class="hint"><kbd>Enter</kbd> to file</span>
+          <button class="btn" id="submit" type="submit">
+            <span>Ask</span><span class="btn__mark">&#9654;</span>
+          </button>
+        </div>
+      </form>
+
+      <section class="rail__section">
+        <span class="label">Suggested lines of inquiry</span>
+        <ul class="prompts" id="prompts">
+          <li><button class="prompt" type="button">What is the latest news on Apple?</button></li>
+          <li><button class="prompt" type="button">Summarise the sentiment in recent coverage.</button></li>
+          <li><button class="prompt" type="button">What risks are reporters flagging right now?</button></li>
+          <li><button class="prompt" type="button">Which companies are mentioned most often?</button></li>
+        </ul>
+      </section>
+
+      <section class="rail__section">
+        <span class="label">Method</span>
+        <p class="method">
+          Each query is embedded, then matched against the news corpus by nearest-neighbour
+          search over <b>pgvector</b>. The <b>three</b> closest passages are passed to the model
+          as context. Every answer below is composed only from those passages, and each is
+          listed so you can check the work.
+        </p>
+      </section>
+    </aside>
+
+    <main class="main" id="main">
+      <section class="standfirst reveal" id="standfirst">
+        <hr class="standfirst__rule">
+        <h2>Answers you can trace back to their source.</h2>
+        <p>
+          Ask a question about the financial news wire. FinanceRAG retrieves the passages that
+          actually bear on it, composes a reply from those passages alone, and prints them
+          underneath — so nothing here rests on the model's memory.
+        </p>
+        <p class="standfirst__note">Awaiting query · No dispatch filed</p>
+      </section>
+    </main>
+
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var form      = document.getElementById("composer");
+  var input     = document.getElementById("query");
+  var submit    = document.getElementById("submit");
+  var main      = document.getElementById("main");
+  var editionEl = document.getElementById("edition");
+  var serviceEl = document.getElementById("service");
+
+  var dispatchNo = 0;
+  var busy = false;
+
+  // ── Masthead date, in broadsheet style ────────────────
+  var now = new Date();
+  editionEl.textContent = now
+    .toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+    .toUpperCase();
+
+  // ── Health probe, so the colophon tells the truth ─────
+  fetch("/api/health")
+    .then(function (r) { return r.ok ? r.json() : Promise.reject(r); })
+    .then(function (d) { serviceEl.textContent = d.status === "ok" ? "Online" : "Degraded"; })
+    .catch(function () { serviceEl.textContent = "Unreachable"; });
+
+  // ── Helpers ───────────────────────────────────────────
+
+  function esc(s) {
+    var d = document.createElement("div");
+    d.textContent = s == null ? "" : String(s);
+    return d.innerHTML;
+  }
+
+  function pad(n) { return String(n).padStart(3, "0"); }
+
+  function paragraphs(text) {
+    return String(text || "")
+      .split(/\n\s*\n/)
+      .map(function (p) { return p.trim(); })
+      .filter(Boolean);
+  }
+
+  function autogrow() {
+    input.style.height = "auto";
+    input.style.height = Math.min(input.scrollHeight, 256) + "px";
+  }
+
+  // ── Views ─────────────────────────────────────────────
+
+  var PHASES = ["Retrieving passages", "Reading sources", "Composing reply"];
+
+  function renderWorking() {
+    main.innerHTML =
+      '<div class="reveal">' +
+        '<div class="status">' +
+          '<span class="status__caret"></span>' +
+          '<span id="phase">' + PHASES[0] + "</span>" +
+        "</div>" +
+        '<div class="status__bar"></div>' +
+      "</div>";
+
+    var i = 0;
+    var phaseEl = document.getElementById("phase");
+    return setInterval(function () {
+      i = (i + 1) % PHASES.length;
+      if (phaseEl) phaseEl.textContent = PHASES[i];
+    }, 1400);
+  }
+
+  function renderDispatch(data, seconds) {
+    var sources = Array.isArray(data.sources) ? data.sources : [];
+
+    var body = paragraphs(data.answer)
+      .map(function (p) { return "<p>" + esc(p) + "</p>"; })
+      .join("") || "<p>The model returned an empty reply.</p>";
+
+    var list = sources
+      .map(function (s, i) {
+        return (
+          '<li class="source">' +
+            '<span class="source__no">' + String(i + 1).padStart(2, "0") + "</span>" +
+            "<div>" +
+              '<h4 class="source__title">' + esc(s.title || "Untitled passage") + "</h4>" +
+              '<p class="source__snippet">' + esc(s.content || "") + "</p>" +
+            "</div>" +
+          "</li>"
+        );
+      })
+      .join("");
+
+    var apparatus = sources.length
+      ? '<section class="sources reveal" style="animation-delay:180ms">' +
+          '<div class="sources__head"><span class="label">Sources consulted</span></div>' +
+          '<ol class="sources__list">' + list + "</ol>" +
+        "</section>"
+      : "";
+
+    main.innerHTML =
+      '<article class="dispatch">' +
+        '<div class="dispatch__meta reveal">' +
+          '<span class="dispatch__no">Dispatch No. ' + pad(dispatchNo) + "</span>" +
+          '<span class="dispatch__stats">' +
+            seconds.toFixed(2) + "s · " + sources.length +
+            " source" + (sources.length === 1 ? "" : "s") +
+          "</span>" +
+        "</div>" +
+        '<h2 class="dispatch__question reveal" style="animation-delay:60ms">' +
+          esc(data.question) +
+        "</h2>" +
+        '<div class="dispatch__body reveal" style="animation-delay:120ms">' + body + "</div>" +
+        apparatus +
+      "</article>";
+  }
+
+  function renderFailure(message, detail) {
+    main.innerHTML =
+      '<section class="failure reveal">' +
+        '<span class="failure__label">Request failed</span>' +
+        '<p class="failure__msg">' + esc(message) + "</p>" +
+        (detail ? '<p class="failure__detail">' + esc(detail) + "</p>" : "") +
+      "</section>";
+  }
+
+  // ── Submit ────────────────────────────────────────────
+
+  function ask(question) {
+    if (busy) return;
+    question = question.trim();
+    if (!question) { input.focus(); return; }
+
+    busy = true;
+    submit.disabled = true;
+    dispatchNo += 1;
+
+    var ticker = renderWorking();
+    var started = performance.now();
+
+    fetch("/ask", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question: question })
+    })
+      .then(function (res) {
+        return res.json()
+          .catch(function () { return {}; })
+          .then(function (payload) {
+            if (!res.ok) {
+              var msg = payload.detail || payload.message ||
+                        "The service responded with status " + res.status + ".";
+              throw new Error(msg);
+            }
+            return payload;
+          });
+      })
+      .then(function (data) {
+        clearInterval(ticker);
+        renderDispatch(data, (performance.now() - started) / 1000);
+      })
+      .catch(function (err) {
+        clearInterval(ticker);
+        dispatchNo -= 1;
+        renderFailure(
+          "The query could not be answered.",
+          err && err.message ? err.message : "Network request failed."
+        );
+      })
+      .then(function () {
+        busy = false;
+        submit.disabled = false;
+      });
+  }
+
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    ask(input.value);
+  });
+
+  input.addEventListener("input", autogrow);
+
+  input.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      ask(input.value);
+    }
+  });
+
+  document.getElementById("prompts").addEventListener("click", function (e) {
+    var btn = e.target.closest(".prompt");
+    if (!btn) return;
+    input.value = btn.textContent.trim();
+    autogrow();
+    ask(input.value);
+  });
+
+  input.focus();
+})();
+</script>
+</body>
+</html>

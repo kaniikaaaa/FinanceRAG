@@ -1,33 +1,81 @@
-from fastapi import FastAPI
+from pathlib import Path
+
+import psycopg2
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
+
 from app.search import search_similar_news, ask_llm
 
-
 app = FastAPI(title="FinanceRAG API")
-@app.get("/")
-def root():
-    return {"message": "FinanceRAG API is running 🚀"}
+
+INDEX_HTML = Path(__file__).resolve().parent.parent / "web" / "index.html"
+
+
+@app.get("/", include_in_schema=False)
+def home():
+    return FileResponse(INDEX_HTML)
+
+
+@app.get("/api/health")
+def health():
+    return {"status": "ok", "service": "FinanceRAG API"}
 
 
 class QueryRequest(BaseModel):
     question: str
 
 
+def snippet(text, limit=200):
+    text = (text or "").strip()
+    if len(text) <= limit:
+        return text
+    return text[:limit].rstrip() + "…"
+
+
 @app.post("/ask")
 def ask_question(req: QueryRequest):
-    results = search_similar_news(req.question)
+    question = req.question.strip()
+    if not question:
+        raise HTTPException(status_code=400, detail="Question must not be empty.")
+
+    try:
+        results = search_similar_news(question)
+    except psycopg2.OperationalError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Could not reach the news database: {exc}"
+        )
+    except Exception as exc:
+        # Retrieval also embeds the query, so this covers the embedding call too.
+        raise HTTPException(
+            status_code=502,
+            detail=f"Retrieval failed: {type(exc).__name__}: {exc}"
+        )
+
+    if not results:
+        raise HTTPException(
+            status_code=404,
+            detail="No news passages matched this question. Has the corpus been ingested?"
+        )
 
     context = ""
     for title, content in results:
         context += f"\nTitle: {title}\n{content}\n"
 
-    answer = ask_llm(req.question, context)
+    try:
+        answer = ask_llm(question, context)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"The language model did not respond: {type(exc).__name__}: {exc}"
+        )
 
     return {
-        "question": req.question,
+        "question": question,
         "answer": answer,
         "sources": [
-            {"title": title, "content": content[:200]}
+            {"title": title, "content": snippet(content)}
             for title, content in results
         ]
     }
