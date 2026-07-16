@@ -67,4 +67,4 @@ if __name__ == "__main__":
         context += f"\nTitle: {title}\n{content}\n"
 
     answer = ask_llm(query, context)
-    print("\n🤖 Answer:\n", answer)
+    print("\nAnswer:\n", answer)

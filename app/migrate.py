@@ -2,6 +2,8 @@
 
 Safe to run more than once. Run this before embed.py.
 """
+import psycopg2
+
 from app.db import get_connection
 
 # text-embedding-3-large returns 3072 dimensions. pgvector will not build an
@@ -38,6 +40,24 @@ def migrate():
         f"ADD COLUMN IF NOT EXISTS embedding vector({DIMENSIONS});"
     )
     print(f"embedding vector({DIMENSIONS}) column ready")
+
+    # What makes ingest.py's ON CONFLICT DO NOTHING work. md5() keeps the key
+    # within btree's size limit, which a long passage would otherwise exceed.
+    try:
+        cur.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS news_chunks_chunk_uniq "
+            "ON public.news_chunks (md5(chunk));"
+        )
+        print("unique index on chunk ready")
+    except psycopg2.errors.UniqueViolation:
+        cur.execute(
+            "SELECT count(*) - count(DISTINCT md5(chunk)) FROM public.news_chunks "
+            "WHERE chunk IS NOT NULL;"
+        )
+        print(
+            f"WARNING: {cur.fetchone()[0]} duplicate chunks present, so the unique "
+            f"index was not created. Remove the duplicates and re-run."
+        )
 
     cur.execute("SELECT count(*), count(embedding) FROM public.news_chunks;")
     total, embedded = cur.fetchone()

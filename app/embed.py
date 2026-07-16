@@ -47,7 +47,7 @@ def store_embeddings():
     conn.commit()
     cur.close()
     conn.close()
-    print("✅ All embeddings generated and saved!")
+    print("All embeddings generated and saved.")
 
 
 if __name__ == "__main__":
