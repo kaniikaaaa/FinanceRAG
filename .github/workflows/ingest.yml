@@ -1,0 +1,44 @@
+name: Ingest news
+
+# The read path lives on Vercel; this is the write path. It runs here rather
+# than in a serverless function because embedding is a batch job measured in
+# minutes, which is what a function's timeout cannot accommodate.
+on:
+  schedule:
+    - cron: "0 */6 * * *"   # every six hours
+  workflow_dispatch:
+    inputs:
+      tickers:
+        description: "Tickers to pull, space separated"
+        required: false
+        default: "AAPL TSLA MSFT NVDA GOOGL AMZN META JPM"
+
+# Never let two runs embed the same rows at once.
+concurrency:
+  group: ingest
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Fetch news, then embed whatever is new
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          TICKERS: ${{ github.event.inputs.tickers || 'AAPL TSLA MSFT NVDA GOOGL AMZN META JPM' }}
+        run: |
+          python -m app.migrate
+          python -m app.ingest $TICKERS
+          python -m app.embed

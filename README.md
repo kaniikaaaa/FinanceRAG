@@ -54,6 +54,17 @@ uvicorn app.main:app --reload
 Run `migrate` first: it owns the schema. `ingest` and `embed` are both safe to re-run —
 `ingest` skips passages it already has, `embed` skips rows it has already embedded.
 
+## Keeping the corpus fresh
+
+`.github/workflows/ingest.yml` runs `migrate → ingest → embed` against the same database
+every six hours, and on demand from the Actions tab. It needs `DATABASE_URL` and
+`GEMINI_API_KEY` as repository secrets.
+
+This is the write path, and it deliberately does not live on Vercel: embedding is a batch
+job measured in minutes, which is the one thing a serverless function's timeout cannot
+accommodate. Vercel serves the read path, where a query is three network calls and no
+state of its own.
+
 ## API
 
 ```
