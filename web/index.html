@@ -415,6 +415,33 @@
 
   .dispatch__body p:last-child { margin-bottom: 0; }
 
+  .dispatch__body strong { font-weight: 600; }
+  .dispatch__body em { font-style: italic; }
+
+  .dispatch__body ul {
+    margin: 0 0 1.05rem;
+    padding: 0;
+    list-style: none;
+  }
+
+  .dispatch__body li {
+    position: relative;
+    margin-bottom: 0.35rem;
+    padding-left: 1.15rem;
+    font-family: var(--serif);
+    font-size: 1.1875rem;
+    line-height: 1.66;
+    color: #221b15;
+  }
+
+  /* An em rule, matching the rail, rather than a disc. */
+  .dispatch__body li::before {
+    content: "—";
+    position: absolute;
+    left: 0;
+    color: var(--oxblood);
+  }
+
   /* Drop cap — editorial signature of the answer. */
   .dispatch__body p:first-of-type::first-letter {
     float: left;
@@ -607,8 +634,8 @@
   <div class="colophon">
     <span>Edition <b id="edition">—</b></span>
     <span>Corpus <b>Yahoo Finance Wire</b></span>
-    <span>Retrieval <b>text-embedding-3-large</b></span>
-    <span>Composition <b>gpt-4o-mini</b></span>
+    <span>Retrieval <b id="embed-model">—</b></span>
+    <span>Composition <b id="chat-model">—</b></span>
     <span>Service <b id="service">checking…</b></span>
   </div>
 
@@ -681,6 +708,8 @@
   var main      = document.getElementById("main");
   var editionEl = document.getElementById("edition");
   var serviceEl = document.getElementById("service");
+  var embedEl   = document.getElementById("embed-model");
+  var chatEl    = document.getElementById("chat-model");
 
   var dispatchNo = 0;
   var busy = false;
@@ -694,7 +723,11 @@
   // ── Health probe, so the colophon tells the truth ─────
   fetch("/api/health")
     .then(function (r) { return r.ok ? r.json() : Promise.reject(r); })
-    .then(function (d) { serviceEl.textContent = d.status === "ok" ? "Online" : "Degraded"; })
+    .then(function (d) {
+      serviceEl.textContent = d.status === "ok" ? "Online" : "Degraded";
+      if (d.embed_model) embedEl.textContent = d.embed_model;
+      if (d.chat_model) chatEl.textContent = d.chat_model;
+    })
     .catch(function () { serviceEl.textContent = "Unreachable"; });
 
   // ── Helpers ───────────────────────────────────────────
@@ -712,6 +745,30 @@
       .split(/\n\s*\n/)
       .map(function (p) { return p.trim(); })
       .filter(Boolean);
+  }
+
+  // The model answers in markdown. Escape first, then add our own tags, so
+  // anything it emits is inert text by the time these run.
+  function inline(s) {
+    return esc(s)
+      .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+      .replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, "$1<em>$2</em>");
+  }
+
+  function renderMarkdown(text) {
+    return paragraphs(text).map(function (block) {
+      var lines = block.split("\n")
+        .map(function (l) { return l.trim(); })
+        .filter(Boolean);
+
+      var bullet = /^[*\-•]\s+/;
+      if (lines.length && lines.every(function (l) { return bullet.test(l); })) {
+        return "<ul>" + lines.map(function (l) {
+          return "<li>" + inline(l.replace(bullet, "")) + "</li>";
+        }).join("") + "</ul>";
+      }
+      return "<p>" + inline(block) + "</p>";
+    }).join("");
   }
 
   function autogrow() {
@@ -744,9 +801,8 @@
   function renderDispatch(data, seconds) {
     var sources = Array.isArray(data.sources) ? data.sources : [];
 
-    var body = paragraphs(data.answer)
-      .map(function (p) { return "<p>" + esc(p) + "</p>"; })
-      .join("") || "<p>The model returned an empty reply.</p>";
+    var body = renderMarkdown(data.answer) ||
+      "<p>The model returned an empty reply.</p>";
 
     var list = sources
       .map(function (s, i) {
@@ -866,7 +922,15 @@
     ask(input.value);
   });
 
-  input.focus();
+  // ?q=... files a query on load, so a dispatch can be linked to and reopened.
+  var initial = new URLSearchParams(window.location.search).get("q");
+  if (initial && initial.trim()) {
+    input.value = initial;
+    autogrow();
+    ask(initial);
+  } else {
+    input.focus();
+  }
 })();
 </script>
 </body>

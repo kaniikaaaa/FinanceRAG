@@ -1,8 +1,7 @@
 fastapi
 uvicorn
 psycopg2-binary
-sqlalchemy
 python-dotenv
 yfinance
 pandas
-openai
+google-genai

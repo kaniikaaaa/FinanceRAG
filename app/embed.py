@@ -1,21 +1,10 @@
-from openai import OpenAI
-import os
-from dotenv import load_dotenv
-
 from app.db import get_connection
+from app.gemini import embed_document
 from app.vectors import to_vector
-
-load_dotenv()
-
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
 def generate_embedding(text):
-    response = client.embeddings.create(
-        model="text-embedding-3-large",
-        input=text
-    )
-    return response.data[0].embedding
+    return embed_document(text)
 
 
 def store_embeddings():
@@ -33,6 +22,14 @@ def store_embeddings():
     """)
     rows = cur.fetchall()
 
+    if not rows:
+        print("Nothing to embed.")
+        cur.close()
+        conn.close()
+        return
+
+    print(f"Embedding {len(rows)} passages...")
+
     for row_id, chunk in rows:
         emb = generate_embedding(chunk)
 
@@ -42,12 +39,17 @@ def store_embeddings():
             WHERE id = %s;
         """, (to_vector(emb), row_id))
 
+        # Commit per row so a rate limit partway through does not throw away
+        # the work already done — a rerun picks up where this stopped.
+        conn.commit()
         print(f"Embedding stored for row id: {row_id}")
 
-    conn.commit()
+    cur.execute("SELECT count(*), count(embedding) FROM public.news_chunks;")
+    total, embedded = cur.fetchone()
+
     cur.close()
     conn.close()
-    print("All embeddings generated and saved.")
+    print(f"All embeddings generated and saved. {embedded}/{total} rows embedded.")
 
 
 if __name__ == "__main__":

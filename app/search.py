@@ -1,21 +1,10 @@
-from openai import OpenAI
-import os
-from dotenv import load_dotenv
-
 from app.db import get_connection
+from app.gemini import embed_query, generate
 from app.vectors import to_vector
-
-load_dotenv()
-
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
 def get_query_embedding(query):
-    response = client.embeddings.create(
-        model="text-embedding-3-large",
-        input=query
-    )
-    return response.data[0].embedding
+    return embed_query(query)
 
 
 def search_similar_news(query, k=3):
@@ -49,12 +38,7 @@ Question:
 {query}
 """
 
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}]
-    )
-
-    return response.choices[0].message.content
+    return generate(prompt)
 
 
 if __name__ == "__main__":

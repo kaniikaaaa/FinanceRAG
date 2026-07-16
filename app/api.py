@@ -5,6 +5,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
+from app.gemini import CHAT_MODEL, DIMENSIONS, EMBED_MODEL
 from app.search import search_similar_news, ask_llm
 
 app = FastAPI(title="FinanceRAG API")
@@ -19,7 +20,15 @@ def home():
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok", "service": "FinanceRAG API"}
+    # The page reads its colophon from here rather than hardcoding model names,
+    # which drift the moment a model is swapped.
+    return {
+        "status": "ok",
+        "service": "FinanceRAG API",
+        "embed_model": EMBED_MODEL,
+        "chat_model": CHAT_MODEL,
+        "dimensions": DIMENSIONS,
+    }
 
 
 class QueryRequest(BaseModel):
