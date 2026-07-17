@@ -4,143 +4,215 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>FinanceRAG — Retrieval-Augmented Market Intelligence</title>
-<meta name="description" content="Ask questions about finance news. Answers are grounded in retrieved source material and cited.">
+<meta name="description" content="Ask questions about the finance news wire. Answers are retrieved, dated and cited.">
+<meta name="color-scheme" content="dark">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,300;1,6..72,400&family=Libre+Franklin:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@500;600&display=swap" rel="stylesheet">
 <style>
   :root {
-    --paper:      #f6ede1;
-    --paper-deep: #efe3d3;
-    --paper-sunk: #e9dcc9;
-    --ink:        #17120e;
-    --ink-soft:   #4d443a;
-    --ink-faint:  #8b8072;
-    --rule:       rgba(23, 18, 14, 0.15);
-    --rule-soft:  rgba(23, 18, 14, 0.08);
-    --oxblood:    #9b2c1f;
-    --verdigris:  #1f5e52;
+    --void:      #07090b;
+    --panel:     #0d1116;
+    --panel-2:   #12181f;
+    --sunk:      #090c10;
 
-    --serif: "Newsreader", Georgia, "Times New Roman", serif;
-    --sans:  "Libre Franklin", "Helvetica Neue", Helvetica, sans-serif;
-    --mono:  "IBM Plex Mono", "SFMono-Regular", Menlo, monospace;
+    --line:      rgba(146, 168, 190, 0.15);
+    --line-soft: rgba(146, 168, 190, 0.07);
 
-    --rail: 21rem;
-    --gutter: clamp(1.25rem, 3.5vw, 3rem);
+    --text:      #dbe3ea;
+    --dim:       #96a3b1;
+    /* 5.2:1 on --void. The obvious darker grey lands at 3.4:1, which fails AA
+       for the small mono labels this is mostly used on. */
+    --faint:     #78848f;
+
+    --amber:     #ff9e2c;
+    --amber-dim: rgba(255, 158, 44, 0.14);
+    --up:        #2fbf71;
+    --down:      #e5484d;
+
+    --mono: "IBM Plex Mono", "SFMono-Regular", Menlo, monospace;
+    --sans: "IBM Plex Sans", system-ui, sans-serif;
+    --cond: "IBM Plex Sans Condensed", "IBM Plex Sans", sans-serif;
+
+    --rail: 20rem;
+    --gutter: clamp(1rem, 2.6vw, 2rem);
   }
 
   * { box-sizing: border-box; }
-
   html { -webkit-text-size-adjust: 100%; }
 
   body {
     margin: 0;
-    background: var(--paper);
-    color: var(--ink);
+    background: var(--void);
+    color: var(--text);
     font-family: var(--sans);
-    font-size: 16px;
+    font-size: 15px;
     line-height: 1.5;
+    font-variant-numeric: tabular-nums;
     -webkit-font-smoothing: antialiased;
-    text-rendering: optimizeLegibility;
   }
-
-  /* Print grain. Sits above the paper, below the type. */
-  body::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-    pointer-events: none;
-    opacity: 0.42;
-    mix-blend-mode: multiply;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='0.34'/%3E%3C/svg%3E");
-  }
-
-  .sheet { position: relative; z-index: 1; }
 
   a { color: inherit; }
-
-  ::selection { background: var(--oxblood); color: var(--paper); }
+  ::selection { background: var(--amber); color: #000; }
 
   :focus-visible {
-    outline: 2px solid var(--oxblood);
-    outline-offset: 3px;
+    outline: 1px solid var(--amber);
+    outline-offset: 2px;
   }
 
   .label {
     font-family: var(--mono);
     font-size: 0.625rem;
     font-weight: 500;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: var(--ink-faint);
-  }
-
-  /* ── Masthead ─────────────────────────────────────────── */
-
-  .masthead {
-    padding: clamp(1.5rem, 3vw, 2.25rem) var(--gutter) 0;
-  }
-
-  .masthead__row {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 1.5rem;
-    flex-wrap: wrap;
-  }
-
-  .wordmark {
-    margin: 0;
-    font-family: var(--serif);
-    font-size: clamp(1.75rem, 4vw, 2.5rem);
-    font-weight: 500;
-    letter-spacing: -0.025em;
-    line-height: 1;
-  }
-
-  .wordmark em {
-    font-style: italic;
-    font-weight: 300;
-    color: var(--oxblood);
-  }
-
-  .masthead__tagline {
-    font-family: var(--mono);
-    font-size: 0.625rem;
-    font-weight: 500;
     letter-spacing: 0.18em;
     text-transform: uppercase;
-    color: var(--ink-soft);
-    text-align: right;
+    color: var(--faint);
   }
 
-  .masthead__rule {
-    margin: 0.9rem 0 0;
-    border: 0;
-    border-top: 3px solid var(--ink);
-    border-bottom: 1px solid var(--ink);
-    height: 3px;
-  }
+  /* ── Header ───────────────────────────────────────────── */
 
-  /* Ticker strip — real facts about the pipeline, not decoration. */
-  .colophon {
+  .head {
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem 1.4rem;
-    padding: 0.5rem var(--gutter) 0.6rem;
-    border-bottom: 1px solid var(--rule);
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.7rem var(--gutter);
+    background: var(--panel);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .brand {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    margin: 0;
+    font-family: var(--cond);
+    font-size: 1.125rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+
+  .brand span { color: var(--amber); }
+
+  .brand::before {
+    content: "";
+    width: 0.5rem;
+    height: 1.05rem;
+    background: var(--amber);
+  }
+
+  .head__right {
+    display: flex;
+    align-items: center;
+    gap: 1.1rem;
     font-family: var(--mono);
     font-size: 0.625rem;
-    font-weight: 400;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: var(--ink-faint);
+    color: var(--dim);
   }
 
-  .colophon b {
+  .live {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--up);
+  }
+
+  .live::before {
+    content: "";
+    width: 0.4rem;
+    height: 0.4rem;
+    border-radius: 50%;
+    background: currentColor;
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+
+  .live[data-state="down"] { color: var(--down); }
+
+  @keyframes pulse { 50% { opacity: 0.25; } }
+
+  /* ── Ticker ───────────────────────────────────────────── */
+
+  .tape {
+    display: flex;
+    align-items: stretch;
+    background: var(--sunk);
+    border-bottom: 1px solid var(--line);
+    overflow: hidden;
+  }
+
+  .tape__tag {
+    flex: none;
+    display: flex;
+    align-items: center;
+    padding: 0 0.75rem;
+    background: var(--amber);
+    color: #000;
+    font-family: var(--mono);
+    font-size: 0.5625rem;
     font-weight: 600;
-    color: var(--ink-soft);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .tape__win { overflow: hidden; flex: 1; }
+
+  .tape__track {
+    display: inline-flex;
+    align-items: center;
+    gap: 2.25rem;
+    padding: 0.45rem 0;
+    white-space: nowrap;
+    animation: slide 90s linear infinite;
+  }
+
+  .tape:hover .tape__track { animation-play-state: paused; }
+
+  @keyframes slide {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+  }
+
+  .tape__item {
+    font-family: var(--mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.04em;
+    color: var(--dim);
+    text-decoration: none;
+    transition: color 120ms ease;
+  }
+
+  .tape__item:hover { color: var(--amber); }
+
+  .tape__item::before {
+    content: "◆";
+    margin-right: 0.6rem;
+    color: var(--amber);
+    font-size: 0.5rem;
+    vertical-align: 1px;
+  }
+
+  /* ── Status strip ─────────────────────────────────────── */
+
+  .strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 1.5rem;
+    padding: 0.45rem var(--gutter);
+    background: var(--panel);
+    border-bottom: 1px solid var(--line);
+    font-family: var(--mono);
+    font-size: 0.5625rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--faint);
+  }
+
+  .strip b {
+    font-weight: 500;
+    color: var(--dim);
   }
 
   /* ── Frame ────────────────────────────────────────────── */
@@ -149,68 +221,58 @@
     display: grid;
     grid-template-columns: var(--rail) 1fr;
     align-items: start;
-    max-width: 84rem;
+    max-width: 88rem;
     margin: 0 auto;
   }
 
   .rail {
     position: sticky;
     top: 0;
-    padding: 1.75rem var(--gutter) 3rem;
-    border-right: 1px solid var(--rule);
+    padding: 1.35rem var(--gutter) 3rem;
+    border-right: 1px solid var(--line);
   }
 
   .main {
-    padding: 1.75rem var(--gutter) 6rem;
+    padding: 1.35rem var(--gutter) 5rem;
     min-width: 0;
   }
 
   /* ── Composer ─────────────────────────────────────────── */
 
-  .composer__label {
-    display: block;
-    margin-bottom: 0.6rem;
-  }
+  .composer__label { display: block; margin-bottom: 0.5rem; }
 
   .composer__field {
-    position: relative;
-    background: var(--paper-deep);
-    border: 1px solid var(--rule);
-    transition: border-color 140ms ease, background-color 140ms ease;
+    background: var(--sunk);
+    border: 1px solid var(--line);
+    transition: border-color 120ms ease;
   }
 
-  .composer__field:focus-within {
-    border-color: var(--ink);
-    background: var(--paper-sunk);
-  }
+  .composer__field:focus-within { border-color: var(--amber); }
 
   .composer__input {
     display: block;
     width: 100%;
-    min-height: 6.5rem;
-    max-height: 16rem;
-    padding: 0.85rem 0.9rem;
+    min-height: 5.5rem;
+    max-height: 14rem;
+    padding: 0.7rem 0.75rem;
     border: 0;
     background: transparent;
-    color: var(--ink);
-    font-family: var(--serif);
-    font-size: 1.0625rem;
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 0.9375rem;
     line-height: 1.5;
     resize: none;
     outline: 0;
   }
 
-  .composer__input::placeholder {
-    color: var(--ink-faint);
-    font-style: italic;
-  }
+  .composer__input::placeholder { color: var(--faint); }
 
   .composer__actions {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 0.75rem;
-    margin-top: 0.7rem;
+    margin-top: 0.6rem;
   }
 
   .hint {
@@ -218,370 +280,327 @@
     font-size: 0.5625rem;
     letter-spacing: 0.1em;
     text-transform: uppercase;
-    color: var(--ink-faint);
-  }
-
-  kbd {
-    font-family: var(--mono);
-    font-size: inherit;
-    letter-spacing: 0;
-    border-bottom: 1px solid var(--rule);
+    color: var(--faint);
   }
 
   .btn {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.55rem 1rem;
-    border: 1px solid var(--ink);
-    background: var(--ink);
-    color: var(--paper);
+    padding: 0.5rem 0.95rem;
+    border: 0;
+    background: var(--amber);
+    color: #000;
     font-family: var(--mono);
     font-size: 0.6875rem;
     font-weight: 600;
     letter-spacing: 0.14em;
     text-transform: uppercase;
     cursor: pointer;
-    transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+    transition: filter 120ms ease;
   }
 
-  .btn:hover:not(:disabled) {
-    background: var(--oxblood);
-    border-color: var(--oxblood);
-  }
-
-  .btn:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-  }
-
-  .btn__mark { transition: transform 140ms ease; }
+  .btn:hover:not(:disabled) { filter: brightness(1.18); }
+  .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .btn__mark { transition: transform 120ms ease; }
   .btn:hover:not(:disabled) .btn__mark { transform: translateX(2px); }
 
   /* ── Rail sections ────────────────────────────────────── */
 
   .rail__section {
-    margin-top: 2.25rem;
-    padding-top: 1.1rem;
-    border-top: 1px solid var(--rule);
+    margin-top: 1.75rem;
+    padding-top: 0.9rem;
+    border-top: 1px solid var(--line);
   }
 
-  .prompts {
-    margin: 0.75rem 0 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  .prompts li + li { margin-top: 0.15rem; }
+  .prompts { margin: 0.6rem 0 0; padding: 0; list-style: none; }
 
   .prompt {
     display: grid;
-    grid-template-columns: 1rem 1fr;
-    gap: 0.35rem;
+    grid-template-columns: 0.9rem 1fr;
+    gap: 0.3rem;
     width: 100%;
-    padding: 0.32rem 0;
+    padding: 0.3rem 0;
     border: 0;
     background: none;
-    color: var(--ink-soft);
-    font-family: var(--serif);
-    font-size: 0.9375rem;
-    line-height: 1.4;
+    color: var(--dim);
+    font-family: var(--sans);
+    font-size: 0.8125rem;
+    line-height: 1.45;
     text-align: left;
     cursor: pointer;
-    transition: color 140ms ease;
+    transition: color 120ms ease;
   }
 
   .prompt::before {
-    content: "—";
-    color: var(--ink-faint);
-    transition: color 140ms ease, transform 140ms ease;
+    content: "›";
+    color: var(--faint);
+    font-family: var(--mono);
+    transition: color 120ms ease, transform 120ms ease;
   }
 
-  .prompt:hover { color: var(--ink); }
-  .prompt:hover::before { color: var(--oxblood); transform: translateX(2px); }
+  .prompt:hover { color: var(--text); }
+  .prompt:hover::before { color: var(--amber); transform: translateX(2px); }
 
   .method {
-    margin: 0.75rem 0 0;
-    font-size: 0.8125rem;
-    line-height: 1.62;
-    color: var(--ink-soft);
+    margin: 0.6rem 0 0;
+    font-size: 0.75rem;
+    line-height: 1.65;
+    color: var(--dim);
   }
 
   .method b {
     font-family: var(--mono);
     font-size: 0.6875rem;
     font-weight: 500;
-    letter-spacing: 0.04em;
-    color: var(--ink);
+    color: var(--dim);
   }
 
-  /* ── Standfirst / empty state ─────────────────────────── */
+  /* ── Idle ─────────────────────────────────────────────── */
 
-  /* Vertically centred so the surrounding space reads as composed, not unfinished. */
-  .standfirst {
+  .idle {
     display: flex;
     flex-direction: column;
     justify-content: center;
-    max-width: 37rem;
-    min-height: min(64vh, 29rem);
+    min-height: min(58vh, 26rem);
+    max-width: 40rem;
   }
 
-  .standfirst__rule {
-    width: 2.5rem;
+  .idle__mark {
+    width: 2rem;
     height: 2px;
-    margin: 0 0 1.4rem;
-    background: var(--oxblood);
-    border: 0;
+    margin-bottom: 1.2rem;
+    background: var(--amber);
   }
 
-  .standfirst h2 {
-    margin: 0 0 1.15rem;
-    font-family: var(--serif);
-    font-size: clamp(2rem, 4.4vw, 3.15rem);
-    font-weight: 400;
-    font-style: italic;
-    line-height: 1.13;
-    letter-spacing: -0.025em;
+  .idle h2 {
+    margin: 0 0 0.9rem;
+    font-family: var(--cond);
+    font-size: clamp(1.6rem, 3.4vw, 2.4rem);
+    font-weight: 600;
+    line-height: 1.15;
+    letter-spacing: -0.005em;
+    text-transform: uppercase;
     text-wrap: balance;
   }
 
-  .standfirst p {
+  .idle h2 em { font-style: normal; color: var(--amber); }
+
+  .idle p {
     margin: 0;
-    font-size: 1rem;
+    max-width: 32rem;
+    font-size: 0.875rem;
     line-height: 1.7;
-    color: var(--ink-soft);
-    max-width: 31rem;
+    color: var(--dim);
   }
 
-  .standfirst__note {
-    margin: 2.25rem 0 0;
-    padding-top: 0.85rem;
-    border-top: 1px solid var(--rule);
+  .idle__note {
+    margin: 1.75rem 0 0;
+    padding-top: 0.7rem;
+    border-top: 1px solid var(--line);
     font-family: var(--mono);
-    font-size: 0.625rem;
+    font-size: 0.5625rem;
     letter-spacing: 0.16em;
     text-transform: uppercase;
-    color: var(--ink-faint);
+    color: var(--faint);
   }
 
-  /* ── The dispatch ─────────────────────────────────────── */
+  /* ── Dispatch ─────────────────────────────────────────── */
 
-  .dispatch { max-width: 44rem; }
+  .dispatch { max-width: 46rem; }
 
   .dispatch__meta {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     justify-content: space-between;
     gap: 1rem;
     flex-wrap: wrap;
-    padding-bottom: 0.55rem;
-    border-bottom: 1px solid var(--ink);
+    padding-bottom: 0.45rem;
+    border-bottom: 1px solid var(--amber);
   }
 
   .dispatch__no {
     font-family: var(--mono);
-    font-size: 0.6875rem;
+    font-size: 0.625rem;
     font-weight: 600;
-    letter-spacing: 0.14em;
+    letter-spacing: 0.16em;
     text-transform: uppercase;
+    color: var(--amber);
   }
 
   .dispatch__stats {
     font-family: var(--mono);
-    font-size: 0.625rem;
-    letter-spacing: 0.1em;
+    font-size: 0.5625rem;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: var(--ink-faint);
-    font-variant-numeric: tabular-nums;
+    color: var(--faint);
   }
 
   .dispatch__question {
-    margin: 1.15rem 0 1.5rem;
-    font-family: var(--serif);
-    font-size: clamp(1.375rem, 2.6vw, 1.75rem);
-    font-weight: 400;
-    line-height: 1.28;
-    letter-spacing: -0.015em;
+    margin: 1rem 0 1.2rem;
+    font-family: var(--cond);
+    font-size: clamp(1.25rem, 2.3vw, 1.6rem);
+    font-weight: 600;
+    line-height: 1.24;
     text-wrap: balance;
   }
 
+  /* Terminal output: the answer is what the machine printed back. */
+  .dispatch__body {
+    padding-left: 0.9rem;
+    border-left: 2px solid var(--amber-dim);
+  }
+
   .dispatch__body p {
-    margin: 0 0 1.05rem;
-    font-family: var(--serif);
-    font-size: 1.1875rem;
-    line-height: 1.66;
-    color: #221b15;
+    margin: 0 0 0.85rem;
+    font-size: 0.9375rem;
+    line-height: 1.72;
   }
 
   .dispatch__body p:last-child { margin-bottom: 0; }
-
-  .dispatch__body strong { font-weight: 600; }
+  .dispatch__body strong { font-weight: 600; color: #fff; }
   .dispatch__body em { font-style: italic; }
 
-  .dispatch__body ul {
-    margin: 0 0 1.05rem;
-    padding: 0;
-    list-style: none;
-  }
+  .dispatch__body ul { margin: 0 0 0.85rem; padding: 0; list-style: none; }
 
   .dispatch__body li {
     position: relative;
-    margin-bottom: 0.35rem;
-    padding-left: 1.15rem;
-    font-family: var(--serif);
-    font-size: 1.1875rem;
-    line-height: 1.66;
-    color: #221b15;
+    margin-bottom: 0.3rem;
+    padding-left: 1rem;
+    font-size: 0.9375rem;
+    line-height: 1.72;
   }
 
-  /* An em rule, matching the rail, rather than a disc. */
   .dispatch__body li::before {
-    content: "—";
+    content: "▸";
     position: absolute;
     left: 0;
-    color: var(--oxblood);
-  }
-
-  /* Drop cap — editorial signature of the answer. */
-  .dispatch__body p:first-of-type::first-letter {
-    float: left;
-    margin: 0.34rem 0.55rem 0 0;
-    font-size: 3.6em;
-    line-height: 0.76;
-    font-weight: 500;
-    color: var(--oxblood);
+    color: var(--amber);
+    font-size: 0.6875rem;
+    top: 0.28rem;
   }
 
   /* ── Sources ──────────────────────────────────────────── */
 
   .sources {
-    margin-top: 2.5rem;
-    padding-top: 1rem;
-    border-top: 1px solid var(--rule);
+    margin-top: 2rem;
+    padding-top: 0.8rem;
+    border-top: 1px solid var(--line);
   }
 
   .sources__head {
     display: flex;
     align-items: center;
     gap: 0.6rem;
-    margin-bottom: 1rem;
+    margin-bottom: 0.75rem;
   }
 
   .sources__head::after {
     content: "";
     flex: 1;
     height: 1px;
-    background: var(--rule-soft);
+    background: var(--line-soft);
   }
 
-  .sources__list {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
+  .sources__list { margin: 0; padding: 0; list-style: none; }
 
   .source {
     display: grid;
-    grid-template-columns: 2.25rem 1fr;
+    grid-template-columns: 2rem 1fr;
     gap: 0.5rem;
-    padding: 0.85rem 0;
-    border-bottom: 1px solid var(--rule-soft);
+    padding: 0.7rem 0;
+    border-bottom: 1px solid var(--line-soft);
   }
 
   .source__no {
     font-family: var(--mono);
-    font-size: 0.6875rem;
+    font-size: 0.625rem;
     font-weight: 600;
-    color: var(--verdigris);
-    font-variant-numeric: tabular-nums;
-    padding-top: 0.2rem;
+    color: var(--amber);
+    padding-top: 0.15rem;
   }
 
   .source__title {
-    margin: 0 0 0.2rem;
-    font-size: 0.9375rem;
+    margin: 0 0 0.15rem;
+    font-size: 0.875rem;
     font-weight: 600;
     line-height: 1.4;
   }
 
   .source__title a {
     text-decoration: none;
-    border-bottom: 1px solid var(--rule);
-    transition: border-color 140ms ease, color 140ms ease;
+    border-bottom: 1px solid var(--line);
+    transition: color 120ms ease, border-color 120ms ease;
   }
 
-  .source__title a:hover {
-    color: var(--oxblood);
-    border-bottom-color: var(--oxblood);
-  }
+  .source__title a:hover { color: var(--amber); border-bottom-color: var(--amber); }
 
   .source__when {
-    margin: 0 0 0.34rem;
+    margin: 0 0 0.3rem;
     font-family: var(--mono);
     font-size: 0.5625rem;
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: var(--ink-faint);
+    color: var(--faint);
   }
 
   .source__snippet {
     margin: 0;
-    font-family: var(--serif);
-    font-size: 0.9375rem;
-    line-height: 1.58;
-    color: var(--ink-soft);
+    font-size: 0.8125rem;
+    line-height: 1.6;
+    color: var(--dim);
   }
 
-  /* ── Status / working ─────────────────────────────────── */
+  /* ── Working ──────────────────────────────────────────── */
 
   .status {
     display: flex;
     align-items: center;
-    gap: 0.6rem;
+    gap: 0.55rem;
     font-family: var(--mono);
     font-size: 0.6875rem;
     font-weight: 500;
     letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: var(--ink-soft);
+    color: var(--dim);
   }
 
   .status__caret {
-    width: 0.5rem;
-    height: 0.9rem;
-    background: var(--oxblood);
+    width: 0.45rem;
+    height: 0.85rem;
+    background: var(--amber);
     animation: blink 1s steps(2, start) infinite;
   }
 
   @keyframes blink { to { visibility: hidden; } }
 
   .status__bar {
-    margin-top: 1.25rem;
+    margin-top: 1rem;
     height: 1px;
-    background: var(--rule);
+    background: var(--line);
     overflow: hidden;
   }
 
   .status__bar::after {
     content: "";
     display: block;
-    width: 34%;
+    width: 32%;
     height: 100%;
-    background: var(--oxblood);
+    background: var(--amber);
     animation: sweep 1.15s ease-in-out infinite;
   }
 
   @keyframes sweep {
     0%   { transform: translateX(-100%); }
-    100% { transform: translateX(390%); }
+    100% { transform: translateX(400%); }
   }
 
   /* ── Failure ──────────────────────────────────────────── */
 
   .failure {
-    max-width: 40rem;
-    padding-left: 1rem;
-    border-left: 3px solid var(--oxblood);
+    max-width: 42rem;
+    padding-left: 0.9rem;
+    border-left: 2px solid var(--down);
   }
 
   .failure__label {
@@ -590,31 +609,26 @@
     font-weight: 600;
     letter-spacing: 0.16em;
     text-transform: uppercase;
-    color: var(--oxblood);
+    color: var(--down);
   }
 
-  .failure__msg {
-    margin: 0.5rem 0 0;
-    font-family: var(--serif);
-    font-size: 1.0625rem;
-    line-height: 1.55;
-  }
+  .failure__msg { margin: 0.45rem 0 0; font-size: 0.9375rem; }
 
   .failure__detail {
-    margin: 0.6rem 0 0;
+    margin: 0.5rem 0 0;
     font-family: var(--mono);
-    font-size: 0.75rem;
-    line-height: 1.55;
-    color: var(--ink-faint);
+    font-size: 0.6875rem;
+    line-height: 1.6;
+    color: var(--faint);
     word-break: break-word;
   }
 
   /* ── Reveal ───────────────────────────────────────────── */
 
-  .reveal { animation: rise 460ms cubic-bezier(0.2, 0.7, 0.3, 1) both; }
+  .reveal { animation: rise 380ms cubic-bezier(0.2, 0.7, 0.3, 1) both; }
 
   @keyframes rise {
-    from { opacity: 0; transform: translateY(6px); }
+    from { opacity: 0; transform: translateY(4px); }
     to   { opacity: 1; transform: none; }
   }
 
@@ -624,57 +638,55 @@
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
     }
+    .tape__track { animation: none; }
   }
-
-  /* ── Narrow ───────────────────────────────────────────── */
 
   @media (max-width: 60rem) {
     .frame { grid-template-columns: 1fr; }
     .rail {
       position: static;
       border-right: 0;
-      border-bottom: 1px solid var(--rule);
-      padding-bottom: 2rem;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 1.75rem;
     }
-    .masthead__tagline { text-align: left; }
   }
 </style>
 </head>
 <body>
-<div class="sheet">
 
-  <header class="masthead">
-    <div class="masthead__row">
-      <h1 class="wordmark">Finance<em>RAG</em></h1>
-      <p class="masthead__tagline">Retrieval-Augmented<br>Market Intelligence</p>
+  <header class="head">
+    <h1 class="brand">Finance<span>RAG</span></h1>
+    <div class="head__right">
+      <span class="live" id="live">Live</span>
+      <span id="clock">--:--:--</span>
     </div>
-    <hr class="masthead__rule">
   </header>
 
-  <div class="colophon">
-    <span>Edition <b id="edition">—</b></span>
+  <div class="tape" id="tape" hidden>
+    <div class="tape__tag">Wire</div>
+    <div class="tape__win"><div class="tape__track" id="tape-track"></div></div>
+  </div>
+
+  <div class="strip">
     <span>Corpus <b>Yahoo Finance Wire</b></span>
     <span>Retrieval <b id="embed-model">—</b></span>
     <span>Composition <b id="chat-model">—</b></span>
-    <span>Service <b id="service">checking…</b></span>
+    <span>Vector <b id="dims">—</b></span>
+    <span>Ranking <b>Similarity × Recency</b></span>
   </div>
 
   <div class="frame">
 
     <aside class="rail">
       <form class="composer" id="composer">
-        <label class="label composer__label" for="query">Your query</label>
+        <label class="label composer__label" for="query">Query</label>
         <div class="composer__field">
-          <textarea
-            id="query"
-            class="composer__input"
-            rows="3"
-            placeholder="What are analysts saying about Apple's earnings?"
-            autocomplete="off"
-            spellcheck="false"></textarea>
+          <textarea id="query" class="composer__input" rows="3"
+            placeholder="What is driving chip stocks today?"
+            autocomplete="off" spellcheck="false"></textarea>
         </div>
         <div class="composer__actions">
-          <span class="hint"><kbd>Enter</kbd> to file</span>
+          <span class="hint">Enter to run</span>
           <button class="btn" id="submit" type="submit">
             <span>Ask</span><span class="btn__mark">&#9654;</span>
           </button>
@@ -682,10 +694,10 @@
       </form>
 
       <section class="rail__section">
-        <span class="label">Suggested lines of inquiry</span>
+        <span class="label">Saved queries</span>
         <ul class="prompts" id="prompts">
+          <li><button class="prompt" type="button">What is the current state of AI chip demand?</button></li>
           <li><button class="prompt" type="button">What is the latest news on Apple?</button></li>
-          <li><button class="prompt" type="button">Summarise the sentiment in recent coverage.</button></li>
           <li><button class="prompt" type="button">What risks are reporters flagging right now?</button></li>
           <li><button class="prompt" type="button">Which companies are mentioned most often?</button></li>
         </ul>
@@ -694,30 +706,29 @@
       <section class="rail__section">
         <span class="label">Method</span>
         <p class="method">
-          Each query is embedded, then matched against the news corpus by nearest-neighbour
-          search over <b>pgvector</b>. Ranking weighs freshness alongside similarity, so a
-          stale story loses to a current one that fits nearly as well. The <b>three</b> best
-          passages are passed to the model as context. Every answer is composed only from
-          those passages, and each is dated and linked so you can check the work.
+          The query is embedded and matched against the wire by nearest-neighbour search
+          over <b>pgvector</b>. Ranking weighs freshness alongside similarity, so a stale
+          story loses to a current one that fits nearly as well. The <b>three</b> best
+          passages become the model's context. Every answer is composed from those passages
+          alone, each dated and linked.
         </p>
       </section>
     </aside>
 
     <main class="main" id="main">
-      <section class="standfirst reveal" id="standfirst">
-        <hr class="standfirst__rule">
-        <h2>Answers you can trace back to their source.</h2>
+      <section class="idle reveal" id="idle">
+        <div class="idle__mark"></div>
+        <h2>Answers you can <em>trace</em> back to the wire</h2>
         <p>
-          Ask a question about the financial news wire. FinanceRAG retrieves the passages that
-          actually bear on it, composes a reply from those passages alone, and prints them
-          underneath — so nothing here rests on the model's memory.
+          Ask a question about the financial news wire. FinanceRAG retrieves the passages
+          that bear on it, prefers what ran most recently, and composes a reply from those
+          passages alone — so nothing here rests on the model's memory.
         </p>
-        <p class="standfirst__note">Awaiting query · No dispatch filed</p>
+        <p class="idle__note">Awaiting query · No dispatch filed</p>
       </section>
     </main>
 
   </div>
-</div>
 
 <script>
 (function () {
@@ -727,29 +738,23 @@
   var input     = document.getElementById("query");
   var submit    = document.getElementById("submit");
   var main      = document.getElementById("main");
-  var editionEl = document.getElementById("edition");
-  var serviceEl = document.getElementById("service");
+  var liveEl    = document.getElementById("live");
+  var clockEl   = document.getElementById("clock");
   var embedEl   = document.getElementById("embed-model");
   var chatEl    = document.getElementById("chat-model");
+  var dimsEl    = document.getElementById("dims");
+  var tape      = document.getElementById("tape");
+  var tapeTrack = document.getElementById("tape-track");
 
   var dispatchNo = 0;
   var busy = false;
 
-  // ── Masthead date, in broadsheet style ────────────────
-  var now = new Date();
-  editionEl.textContent = now
-    .toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
-    .toUpperCase();
-
-  // ── Health probe, so the colophon tells the truth ─────
-  fetch("/api/health")
-    .then(function (r) { return r.ok ? r.json() : Promise.reject(r); })
-    .then(function (d) {
-      serviceEl.textContent = d.status === "ok" ? "Online" : "Degraded";
-      if (d.embed_model) embedEl.textContent = d.embed_model;
-      if (d.chat_model) chatEl.textContent = d.chat_model;
-    })
-    .catch(function () { serviceEl.textContent = "Unreachable"; });
+  // ── Clock ─────────────────────────────────────────────
+  function tick() {
+    clockEl.textContent = new Date().toLocaleTimeString("en-GB", { hour12: false }) + " LOCAL";
+  }
+  tick();
+  setInterval(tick, 1000);
 
   // ── Helpers ───────────────────────────────────────────
 
@@ -761,26 +766,21 @@
 
   function pad(n) { return String(n).padStart(3, "0"); }
 
-  // How old a source is, which is the point of the recency weighting.
   function age(iso) {
     if (!iso) return "";
     var then = new Date(iso);
     if (isNaN(then)) return "";
-
     var hours = (Date.now() - then) / 36e5;
     if (hours < 1) return "Just filed";
     if (hours < 24) return Math.round(hours) + "h ago";
-
     var days = Math.round(hours / 24);
     if (days <= 14) return days + (days === 1 ? " day ago" : " days ago");
     return then.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
   }
 
   function paragraphs(text) {
-    return String(text || "")
-      .split(/\n\s*\n/)
-      .map(function (p) { return p.trim(); })
-      .filter(Boolean);
+    return String(text || "").split(/\n\s*\n/)
+      .map(function (p) { return p.trim(); }).filter(Boolean);
   }
 
   // The model answers in markdown. Escape first, then add our own tags, so
@@ -794,9 +794,7 @@
   function renderMarkdown(text) {
     return paragraphs(text).map(function (block) {
       var lines = block.split("\n")
-        .map(function (l) { return l.trim(); })
-        .filter(Boolean);
-
+        .map(function (l) { return l.trim(); }).filter(Boolean);
       var bullet = /^[*\-•]\s+/;
       if (lines.length && lines.every(function (l) { return bullet.test(l); })) {
         return "<ul>" + lines.map(function (l) {
@@ -809,8 +807,42 @@
 
   function autogrow() {
     input.style.height = "auto";
-    input.style.height = Math.min(input.scrollHeight, 256) + "px";
+    input.style.height = Math.min(input.scrollHeight, 224) + "px";
   }
+
+  // ── Colophon + wire ───────────────────────────────────
+
+  fetch("/api/health")
+    .then(function (r) { return r.ok ? r.json() : Promise.reject(r); })
+    .then(function (d) {
+      if (d.embed_model) embedEl.textContent = d.embed_model;
+      if (d.chat_model) chatEl.textContent = d.chat_model;
+      if (d.dimensions) dimsEl.textContent = d.dimensions + "d";
+    })
+    .catch(function () {
+      liveEl.textContent = "Offline";
+      liveEl.dataset.state = "down";
+    });
+
+  fetch("/api/headlines")
+    .then(function (r) { return r.ok ? r.json() : Promise.reject(r); })
+    .then(function (d) {
+      var items = (d.headlines || []).filter(function (h) { return h.title; });
+      if (!items.length) return;
+
+      function cell(h) {
+        var body = esc(h.title);
+        return h.url
+          ? '<a class="tape__item" href="' + esc(h.url) + '" target="_blank" rel="noopener noreferrer">' + body + "</a>"
+          : '<span class="tape__item">' + body + "</span>";
+      }
+
+      // Printed twice so the -50% loop meets itself with no visible seam.
+      var run = items.map(cell).join("");
+      tapeTrack.innerHTML = run + run;
+      tape.hidden = false;
+    })
+    .catch(function () { /* the wire is furniture; leave it hidden */ });
 
   // ── Views ─────────────────────────────────────────────
 
@@ -819,13 +851,10 @@
   function renderWorking() {
     main.innerHTML =
       '<div class="reveal">' +
-        '<div class="status">' +
-          '<span class="status__caret"></span>' +
-          '<span id="phase">' + PHASES[0] + "</span>" +
-        "</div>" +
+        '<div class="status"><span class="status__caret"></span>' +
+        '<span id="phase">' + PHASES[0] + "</span></div>" +
         '<div class="status__bar"></div>' +
       "</div>";
-
     var i = 0;
     var phaseEl = document.getElementById("phase");
     return setInterval(function () {
@@ -836,33 +865,26 @@
 
   function renderDispatch(data, seconds) {
     var sources = Array.isArray(data.sources) ? data.sources : [];
+    var body = renderMarkdown(data.answer) || "<p>The model returned an empty reply.</p>";
 
-    var body = renderMarkdown(data.answer) ||
-      "<p>The model returned an empty reply.</p>";
-
-    var list = sources
-      .map(function (s, i) {
-        var title = esc(s.title || "Untitled passage");
-        if (s.url) {
-          title = '<a href="' + esc(s.url) + '" target="_blank" rel="noopener noreferrer">' +
-                  title + "</a>";
-        }
-        var when = age(s.published_at);
-        return (
-          '<li class="source">' +
-            '<span class="source__no">' + String(i + 1).padStart(2, "0") + "</span>" +
-            "<div>" +
-              '<h4 class="source__title">' + title + "</h4>" +
-              (when ? '<p class="source__when">' + esc(when) + "</p>" : "") +
-              '<p class="source__snippet">' + esc(s.content || "") + "</p>" +
-            "</div>" +
-          "</li>"
-        );
-      })
-      .join("");
+    var list = sources.map(function (s, i) {
+      var title = esc(s.title || "Untitled passage");
+      if (s.url) {
+        title = '<a href="' + esc(s.url) + '" target="_blank" rel="noopener noreferrer">' + title + "</a>";
+      }
+      var when = age(s.published_at);
+      return '<li class="source">' +
+          '<span class="source__no">' + String(i + 1).padStart(2, "0") + "</span>" +
+          "<div>" +
+            '<h4 class="source__title">' + title + "</h4>" +
+            (when ? '<p class="source__when">' + esc(when) + "</p>" : "") +
+            '<p class="source__snippet">' + esc(s.content || "") + "</p>" +
+          "</div>" +
+        "</li>";
+    }).join("");
 
     var apparatus = sources.length
-      ? '<section class="sources reveal" style="animation-delay:180ms">' +
+      ? '<section class="sources reveal" style="animation-delay:160ms">' +
           '<div class="sources__head"><span class="label">Sources consulted</span></div>' +
           '<ol class="sources__list">' + list + "</ol>" +
         "</section>"
@@ -871,16 +893,13 @@
     main.innerHTML =
       '<article class="dispatch">' +
         '<div class="dispatch__meta reveal">' +
-          '<span class="dispatch__no">Dispatch No. ' + pad(dispatchNo) + "</span>" +
-          '<span class="dispatch__stats">' +
-            seconds.toFixed(2) + "s · " + sources.length +
-            " source" + (sources.length === 1 ? "" : "s") +
-          "</span>" +
+          '<span class="dispatch__no">Dispatch ' + pad(dispatchNo) + "</span>" +
+          '<span class="dispatch__stats">' + seconds.toFixed(2) + "s · " +
+            sources.length + " src</span>" +
         "</div>" +
-        '<h2 class="dispatch__question reveal" style="animation-delay:60ms">' +
-          esc(data.question) +
-        "</h2>" +
-        '<div class="dispatch__body reveal" style="animation-delay:120ms">' + body + "</div>" +
+        '<h2 class="dispatch__question reveal" style="animation-delay:50ms">' +
+          esc(data.question) + "</h2>" +
+        '<div class="dispatch__body reveal" style="animation-delay:100ms">' + body + "</div>" +
         apparatus +
       "</article>";
   }
@@ -914,16 +933,13 @@
       body: JSON.stringify({ question: question })
     })
       .then(function (res) {
-        return res.json()
-          .catch(function () { return {}; })
-          .then(function (payload) {
-            if (!res.ok) {
-              var msg = payload.detail || payload.message ||
-                        "The service responded with status " + res.status + ".";
-              throw new Error(msg);
-            }
-            return payload;
-          });
+        return res.json().catch(function () { return {}; }).then(function (payload) {
+          if (!res.ok) {
+            throw new Error(payload.detail || payload.message ||
+              "The service responded with status " + res.status + ".");
+          }
+          return payload;
+        });
       })
       .then(function (data) {
         clearInterval(ticker);
@@ -932,10 +948,8 @@
       .catch(function (err) {
         clearInterval(ticker);
         dispatchNo -= 1;
-        renderFailure(
-          "The query could not be answered.",
-          err && err.message ? err.message : "Network request failed."
-        );
+        renderFailure("The query could not be answered.",
+          err && err.message ? err.message : "Network request failed.");
       })
       .then(function () {
         busy = false;
@@ -943,18 +957,11 @@
       });
   }
 
-  form.addEventListener("submit", function (e) {
-    e.preventDefault();
-    ask(input.value);
-  });
-
+  form.addEventListener("submit", function (e) { e.preventDefault(); ask(input.value); });
   input.addEventListener("input", autogrow);
 
   input.addEventListener("keydown", function (e) {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      ask(input.value);
-    }
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(input.value); }
   });
 
   document.getElementById("prompts").addEventListener("click", function (e) {

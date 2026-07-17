@@ -5,6 +5,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
+from app.db import get_connection
 from app.gemini import CHAT_MODEL, DIMENSIONS, EMBED_MODEL
 from app.search import ask_llm, build_context, search_similar_news
 
@@ -28,6 +29,39 @@ def health():
         "embed_model": EMBED_MODEL,
         "chat_model": CHAT_MODEL,
         "dimensions": DIMENSIONS,
+    }
+
+
+@app.get("/api/headlines")
+def headlines(limit: int = 14):
+    """Recent titles for the ticker.
+
+    Kept out of /api/health on purpose: that endpoint is Render's health check,
+    and making it depend on the database would report the app as down whenever
+    Neon is merely asleep.
+    """
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT title, url,
+                   COALESCE(published_at, created_at AT TIME ZONE 'UTC') AS at
+            FROM public.news_chunks
+            WHERE btrim(coalesce(title, '')) <> ''
+            ORDER BY at DESC
+            LIMIT %s;
+        """, (min(limit, 40),))
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+    except Exception:
+        # The ticker is furniture. It must never take the page down with it.
+        return {"headlines": []}
+
+    return {
+        "headlines": [
+            {"title": t, "url": u, "published_at": at.isoformat()} for t, u, at in rows
+        ]
     }
 
 

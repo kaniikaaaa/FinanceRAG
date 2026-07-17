@@ -75,10 +75,14 @@ state of its own.
 ## API
 
 ```
-GET  /             the web UI (?q=... files a query directly)
-GET  /api/health   status + the models actually in use
-POST /ask          { "question": "what's driving chip stocks?" }
+GET  /               the web UI (?q=... files a query directly)
+GET  /api/health     status + the models actually in use
+GET  /api/headlines  recent titles, for the ticker
+POST /ask            { "question": "what's driving chip stocks?" }
 ```
+
+`/api/health` deliberately touches nothing but memory — it is the deploy health check, and
+making it depend on Postgres would report the app as down whenever Neon is merely asleep.
 
 `/ask` returns:
 
