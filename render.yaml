@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: financerag
+    runtime: python
+    plan: free
+
+    # Neon lives in us-east-1, so this keeps the database round trip in the same
+    # region rather than sending every query across the country.
+    region: virginia
+
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+
+    healthCheckPath: /api/health
+
+    envVars:
+      # sync: false means Render asks for these once and stores them itself —
+      # they are credentials and must not live in this file.
+      - key: DATABASE_URL
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: PYTHONUNBUFFERED
+        value: "1"

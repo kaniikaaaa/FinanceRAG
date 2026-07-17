@@ -122,12 +122,24 @@ web/
 
 ## Deploying
 
-Vercel autodetects `app/main.py`, so no entrypoint config is needed — adding a
-`pyproject.toml` actually breaks the build, because its presence switches Vercel from
-`requirements.txt` to `uv`, which then demands a `[project]` table.
+Both targets need the same two environment variables, `DATABASE_URL` and `GEMINI_API_KEY`,
+and neither can read `.env` — that file never leaves your machine.
 
-Set `DATABASE_URL` and `GEMINI_API_KEY` in Project Settings → Environment Variables, then
-redeploy. Environment variables only reach a new build, not an existing deployment.
+**Render** (`render.yaml`). New → Blueprint → pick this repo. Render reads the file and
+asks for the two secrets, since they are marked `sync: false` and so are never committed.
+Runs `uvicorn` as an ordinary long-lived process. On the free plan the service sleeps after
+15 minutes idle and the next request pays roughly a minute to wake it.
+
+**Vercel.** Autodetects `app/main.py`, so it needs no entrypoint config — adding a
+`pyproject.toml` actually breaks the build, because its presence switches Vercel from
+`requirements.txt` to `uv`, which then demands a `[project]` table. Set both variables in
+Project Settings → Environment Variables and redeploy; a variable only reaches a new build,
+never an existing deployment.
+
+Nothing in the code knows which one it is running on. The app holds no state: it embeds a
+question, runs one query against Neon, and asks Gemini to write the answer. The vectors
+live in Postgres and the models live behind an API, so the process itself is disposable —
+which is why it runs equally well as a container or as a function.
 
 ## License
 
