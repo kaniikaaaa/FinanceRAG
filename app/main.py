@@ -6,7 +6,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from app.gemini import CHAT_MODEL, DIMENSIONS, EMBED_MODEL
-from app.search import search_similar_news, ask_llm
+from app.search import ask_llm, build_context, search_similar_news
 
 app = FastAPI(title="FinanceRAG API")
 
@@ -68,12 +68,8 @@ def ask_question(req: QueryRequest):
             detail="No news passages matched this question. Has the corpus been ingested?"
         )
 
-    context = ""
-    for title, content in results:
-        context += f"\nTitle: {title}\n{content}\n"
-
     try:
-        answer = ask_llm(question, context)
+        answer = ask_llm(question, build_context(results))
     except Exception as exc:
         raise HTTPException(
             status_code=502,
@@ -84,7 +80,12 @@ def ask_question(req: QueryRequest):
         "question": question,
         "answer": answer,
         "sources": [
-            {"title": title, "content": snippet(content)}
-            for title, content in results
+            {
+                "title": title,
+                "content": snippet(content),
+                "published_at": published_at.isoformat() if published_at else None,
+                "url": url,
+            }
+            for title, content, published_at, url in results
         ]
     }

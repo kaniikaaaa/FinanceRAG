@@ -80,11 +80,21 @@ def migrate():
             title TEXT,
             content TEXT,
             chunk TEXT,
+            url TEXT,
+            published_at TIMESTAMPTZ,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             embedding vector({DIMENSIONS})
         );
     """)
     print("news_chunks table ready")
+
+    # published_at is when the story ran, which is what recency ranking needs.
+    # created_at only says when we happened to fetch it.
+    cur.execute("ALTER TABLE public.news_chunks ADD COLUMN IF NOT EXISTS url TEXT;")
+    cur.execute(
+        "ALTER TABLE public.news_chunks ADD COLUMN IF NOT EXISTS published_at TIMESTAMPTZ;"
+    )
+    print("url + published_at columns ready")
 
     # ...and brings an older table, created before embeddings existed, up to date.
     cur.execute(

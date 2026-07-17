@@ -498,10 +498,30 @@
   }
 
   .source__title {
-    margin: 0 0 0.28rem;
+    margin: 0 0 0.2rem;
     font-size: 0.9375rem;
     font-weight: 600;
     line-height: 1.4;
+  }
+
+  .source__title a {
+    text-decoration: none;
+    border-bottom: 1px solid var(--rule);
+    transition: border-color 140ms ease, color 140ms ease;
+  }
+
+  .source__title a:hover {
+    color: var(--oxblood);
+    border-bottom-color: var(--oxblood);
+  }
+
+  .source__when {
+    margin: 0 0 0.34rem;
+    font-family: var(--mono);
+    font-size: 0.5625rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
   }
 
   .source__snippet {
@@ -675,9 +695,10 @@
         <span class="label">Method</span>
         <p class="method">
           Each query is embedded, then matched against the news corpus by nearest-neighbour
-          search over <b>pgvector</b>. The <b>three</b> closest passages are passed to the model
-          as context. Every answer below is composed only from those passages, and each is
-          listed so you can check the work.
+          search over <b>pgvector</b>. Ranking weighs freshness alongside similarity, so a
+          stale story loses to a current one that fits nearly as well. The <b>three</b> best
+          passages are passed to the model as context. Every answer is composed only from
+          those passages, and each is dated and linked so you can check the work.
         </p>
       </section>
     </aside>
@@ -739,6 +760,21 @@
   }
 
   function pad(n) { return String(n).padStart(3, "0"); }
+
+  // How old a source is, which is the point of the recency weighting.
+  function age(iso) {
+    if (!iso) return "";
+    var then = new Date(iso);
+    if (isNaN(then)) return "";
+
+    var hours = (Date.now() - then) / 36e5;
+    if (hours < 1) return "Just filed";
+    if (hours < 24) return Math.round(hours) + "h ago";
+
+    var days = Math.round(hours / 24);
+    if (days <= 14) return days + (days === 1 ? " day ago" : " days ago");
+    return then.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  }
 
   function paragraphs(text) {
     return String(text || "")
@@ -806,11 +842,18 @@
 
     var list = sources
       .map(function (s, i) {
+        var title = esc(s.title || "Untitled passage");
+        if (s.url) {
+          title = '<a href="' + esc(s.url) + '" target="_blank" rel="noopener noreferrer">' +
+                  title + "</a>";
+        }
+        var when = age(s.published_at);
         return (
           '<li class="source">' +
             '<span class="source__no">' + String(i + 1).padStart(2, "0") + "</span>" +
             "<div>" +
-              '<h4 class="source__title">' + esc(s.title || "Untitled passage") + "</h4>" +
+              '<h4 class="source__title">' + title + "</h4>" +
+              (when ? '<p class="source__when">' + esc(when) + "</p>" : "") +
               '<p class="source__snippet">' + esc(s.content || "") + "</p>" +
             "</div>" +
           "</li>"

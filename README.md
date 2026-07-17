@@ -16,9 +16,16 @@ Runs entirely on free tiers.
 
 ## What's interesting here
 
+- **Fresh beats similar.** Ranking is not similarity alone. Every passage carries a distance
+  penalty that grows with age — none when new, approaching `RECENCY_WEIGHT` when ancient —
+  so a stale story that matches well loses to a current one that matches nearly as well.
+  Backdate the top hit by 60 days and it falls out of the results while its distance never
+  changes. For a news corpus this is the difference between answering about today's market
+  and answering about last quarter's.
 - **The model declines rather than reaching.** Ask it about Nvidia when the corpus has no
   Nvidia coverage and it says so, then describes the AMD reporting it did find. The answer
   is built from the retrieved passages alone, never from what the model happens to remember.
+  Passages reach it dated, alongside today's date, so it can lead with the most recent.
 - **Questions and passages are embedded differently.** Passages go in as
   `RETRIEVAL_DOCUMENT`, questions as `RETRIEVAL_QUERY`. They are not interchangeable —
   embedding both as the same thing measurably degrades retrieval.
@@ -79,9 +86,19 @@ POST /ask          { "question": "what's driving chip stocks?" }
 {
   "question": "...",
   "answer": "...",
-  "sources": [{ "title": "...", "content": "..." }]
+  "sources": [
+    {
+      "title": "...",
+      "content": "...",
+      "published_at": "2026-07-16T22:17:00+00:00",
+      "url": "https://..."
+    }
+  ]
 }
 ```
+
+`published_at` falls back to fetch time for passages stored before publish dates were
+captured — it is the same date the ranking scores on.
 
 Failures come back as `{"detail": "..."}` with a status that says where it broke:
 503 if the database is unreachable, 502 if retrieval or the model failed, 404 if nothing
